@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: statistic-project-x-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: statisticproject_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
