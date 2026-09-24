@@ -4,7 +4,7 @@ import Joi from "joi";
 import { Pool } from "pg";
 
 //ρύθμιση της σύνδεσης με την postgreSQL
-const poll = new Pool({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
@@ -19,43 +19,44 @@ function createError(status, message) {
 }
 
 //η βασική λογική του login - δεν ξέρει τίποτα για το request / responce
-async function getDBResponse(username, password) {
+async function getDBResponse(email, password) {
   //1. Validation με το Joi
   const schema = Joi.object({
-    username: Joi.string().min(3).max(30).required(),
-    password: Joi.string().min(6).required()
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
   });
-  
+
   //επιστροφή του error κατ΄το validation των στοιχειων
-  const { error } = schema.validate({ username, password});
-  if(error){
+  const { error } = schema.validate({ email, password });
+  if (error) {
     throw createError(400, error.details[0].message);
   }
 
   //2. Έλεγχος στην βάση εάν υπάρχει ο χρήστης
-  const userResult = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+  const userResult = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   //Έλεγχος σφάλματος κατά το query στην βάση
-  if (userResult.rows.length === 0){
-    throw createError(401, "Wrong username or password");
+  if (userResult.rows.length === 0) {
+    throw createError(401, "Wrong email or password");
   }
 
   const user = userResult.rows[0];
 
   //3. Έλεγχος εάν ο κωδικός ταιριάζει με τον κρυπτογραφημένο στην βάση δεδομένων
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-  if (!isPasswordValid){
-    throw createError(401, "Wrong username or password");
+  if (!isPasswordValid) {
+    throw createError(401, "Wrong email or password");
   }
 
   //4. Έκδοση JWT Authentication Token
   const payload = {
     userId: user.id,
-    username: user.username
-  }; 
+    email: user.email,
+  };
 
-  const token = jwt.sign(payload, JWT_SECRET, {expireIn: "1h"});
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
 
   return { token };
-  
 }
-module.exports = { getDBResponse };
+export { getDBResponse };
