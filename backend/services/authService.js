@@ -59,4 +59,6 @@ async function getDBResponse(email, password) {
 
   return { token };
 }
-export { getDBResponse };
+
+async function setUserProfile() {}
+export { getDBResponse, setUserProfile };
