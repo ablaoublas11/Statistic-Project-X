@@ -23,7 +23,7 @@ async function getDBResponse(email, password) {
   //1. Validation με το Joi
   const schema = Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
+    password: Joi.string().min(6).max(72).required(),
   });
 
   //επιστροφή του error κατ΄το validation των στοιχειων
@@ -60,5 +60,37 @@ async function getDBResponse(email, password) {
   return { token };
 }
 
-async function setUserProfile() {}
-export { getDBResponse, setUserProfile };
+async function registerUser(
+  email,
+  password,
+  first_name,
+  last_name,
+  company_name,
+  location,
+) {
+  //1. Validation με Joi
+  const schema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).max(72).required(),
+    first_name: Joi.string().max(100).allow("", null).required(),
+    last_name: Joi.string().max(100).allow("", null).required(),
+    company_name: Joi.string().max(255).allow("", null),
+    location: Joi.string().max(255).allow("", null),
+  });
+
+  //επιστροφή του error κατ΄το validation των στοιχείων
+  const { error } = schema.validate({
+    email,
+    password,
+    first_name,
+    last_name,
+    company_name,
+    location,
+  });
+  if (error) {
+    throw createError(400, error.details[0].message);
+  }
+
+  //2. Έλεγχος στην βάση εάν υπάρχει ο χρήστης
+}
+export { getDBResponse, registerUser };
