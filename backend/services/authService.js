@@ -91,6 +91,53 @@ async function registerUser(
     throw createError(400, error.details[0].message);
   }
 
-  //2. Έλεγχος στην βάση εάν υπάρχει ο χρήστης
+  //3. Εισαγωγή δεδομενων στην βαση
+  const client = await pool.connect();
+
+  try {
+    const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [
+      email,
+    ]);
+
+    //εάν δεν υπάρχει ο χρήστης στην βάση τότε βγάλε σφάλμα 409 conflict
+    if (userResult.rows.length !== 0) {
+      throw createError(409, "Conflict");
+    }
+
+    await client.query("BEGIN");
+    //Εισαγωγή στον πρώτο πίνακα και παίρνω id
+
+    //πρώτα κάνω hash το Password
+    const passwordHash = await bcrypt.hash(password, 10);
+    const result = await client.query(
+      `
+      INSERT INTO users (email, password_hash) 
+      VALUES ($1,$2) 
+      RETURNING id`,
+      [email, passwordHash],
+    );
+
+    //κρατάμε το επιστρεφόμενο id
+    const userId = result.rows[0].id;
+
+    await client.query(
+      `
+      INSERT INTO user_profiles (user_id, first_name, last_name, company_name, location) 
+      VALUES ($1,$2,$3,$4,$5)
+      `,
+      [userId, first_name, last_name, company_name, location],
+    );
+
+    //πρέπει να γίνει commit για να αποθηκευτούν μόνιμα τα δεδομένα
+    await client.query("COMMIT");
+
+    //επιστροφή κάποιον στοιχείων του user για την σύνθεση του αντικειμένου στο auth.js
+    return { id: userId, email, first_name, last_name };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 export { getDBResponse, registerUser };
